@@ -54,7 +54,7 @@ Before running the application, set up the following environment variables in a 
 ```
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
-GOOGLE_GEMINI_API_KEY=your_google_gemini_api_key
+GOOGLE_API_KEY=your_google_gemini_api_key
 ```
 
 ## 🔮 Future Enhancements
