@@ -59,7 +59,9 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
   ) => {
     const [messages, setMessages] = useState<CoreMessage[]>([])
     const [input, setInput] = useState('')
-    const [selectedModel, setSelectedModel] = useState('chatgpt-4o-latest')
+    const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo')
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
       if (isSync) {
@@ -107,6 +109,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
         e.preventDefault()
         const messageToSend = overrideMessage || (isSync ? syncedInput : input)
 
+        if (!messageToSend.trim()) return
+
         const newMessages: CoreMessage[] = [
           ...messages,
           { content: messageToSend, role: 'user' },
@@ -114,22 +118,31 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
 
         setMessages(newMessages)
         setInput('')
+        setError(null)
         if (isSync) {
           onSyncedInputChange('')
         }
 
         sendMessage(messageToSend)
+        setIsLoading(true)
 
-        const result = await continueConversation(newMessages, selectedModel)
+        try {
+          const result = await continueConversation(newMessages, selectedModel)
 
-        for await (const content of readStreamableValue(result)) {
-          setMessages([
-            ...newMessages,
-            {
-              role: 'assistant',
-              content: content as string,
-            },
-          ])
+          for await (const content of readStreamableValue(result)) {
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                role: 'assistant',
+                content: content as string,
+              },
+            ])
+          }
+        } catch (error) {
+          console.error('Error in handleSubmit:', error)
+          setError('An error occurred while processing your request. Please try again.')
+        } finally {
+          setIsLoading(false)
         }
       },
       [
@@ -145,47 +158,23 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
 
     const getModelInfo = useCallback((model: string) => {
       switch (model) {
-        case 'chatgpt-4o-latest':
+        case 'gpt-3.5-turbo':
           return {
-            title: 'GPT-4o latest',
+            title: 'GPT-3.5 Turbo',
             description:
-              "GPT-4o latest is OpenAI's most recent language model with advanced natural language processing capabilities...",
+              'GPT-3.5 Turbo is a fast and efficient language model suitable for a wide range of tasks.',
           }
-        case 'gpt-4o-mini':
+        case 'claude':
           return {
-            title: 'GPT-4o mini',
+            title: 'Claude',
             description:
-              "GPT-4o mini is OpenAI's most advanced and cost-effective small model...",
+              'Claude is an AI assistant created by Anthropic to be helpful, harmless, and honest.',
           }
-        case 'claude-3-5-sonnet':
+        case 'gemini':
           return {
-            title: 'Claude 3.5 Sonnet',
+            title: 'Gemini',
             description:
-              "Claude 3.5 Sonnet is Anthropic's high-performance language model capable of handling a wide range of tasks...",
-          }
-        case 'gemini-1.5-pro':
-          return {
-            title: 'Gemini 1.5 Pro',
-            description:
-              "Gemini 1.5 Pro is Google's high-performance language model capable of handling a wide range of tasks...",
-          }
-        case 'gemini-1.5-flash':
-          return {
-            title: 'Gemini 1.5 Flash',
-            description:
-              "Gemini 1.5 Flash is Google's fastest and most cost-effective model for high-frequency tasks...",
-          }
-        case 'llama-3.1-70b':
-          return {
-            title: 'LLaMA 3.1 70B',
-            description:
-              'LLaMA 3.1 70B is a large-scale language model suitable for diverse tasks...',
-          }
-        case 'llama-3.1-8b':
-          return {
-            title: 'LLaMA 3.1 8B',
-            description:
-              'LLaMA 3.1 8B is a small-scale language model that is fast and compact...',
+              "Gemini is Google's largest and most capable AI model, with strong performance across a wide range of tasks.",
           }
         default:
           return {
@@ -204,17 +193,9 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="chatgpt-4o-latest">GPT-4o latest</SelectItem>
-                <SelectItem value="gpt-4o-mini">GPT-4o mini</SelectItem>
-                <SelectItem value="claude-3-5-sonnet">
-                  Claude 3.5 Sonnet
-                </SelectItem>
-                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                <SelectItem value="gemini-1.5-flash">
-                  Gemini 1.5 Flash
-                </SelectItem>
-                <SelectItem value="llama-3.1-70b">LLaMA 3.1 70B</SelectItem>
-                <SelectItem value="llama-3.1-8b">LLaMA 3.1 8B</SelectItem>
+                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                <SelectItem value="claude">Claude</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center space-x-2">
@@ -265,6 +246,9 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
               </CardContent>
             </Card>
           )}
+          {error && (
+            <div className="mt-4 text-red-500">{error}</div>
+          )}
         </CardContent>
 
         <CardFooter className="flex-shrink-0">
@@ -277,13 +261,13 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
               onChange={handleInputChange}
               placeholder="Enter a message..."
               className="flex-grow resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
-              disabled={isSync && isSyncEnabled}
+              disabled={isSync && isSyncEnabled || isLoading}
             />
             <Button
               type="submit"
               size="icon"
               variant="ghost"
-              disabled={isSync && isSyncEnabled}
+              disabled={isSync && isSyncEnabled || isLoading}
             >
               <SendIcon className="h-4 w-4" />
             </Button>

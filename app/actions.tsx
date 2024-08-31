@@ -2,31 +2,49 @@
 
 import { CoreMessage, streamText } from 'ai'
 import { createStreamableValue } from 'ai/rsc'
-import { openai, createOpenAI as createGroq } from '@ai-sdk/openai'
-import { anthropic } from '@ai-sdk/anthropic'
-import { google } from '@ai-sdk/google'
+import OpenAI from 'openai'
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatAnthropic } from "@langchain/anthropic";
 
-const groq = createGroq({
-  baseURL: 'https://api.groq.com/openai/v1',
-  apiKey: process.env.GROQ_API_KEY,
+type AIMessageChunk = {
+  content: string;
+};
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 })
+
+const gemini = new ChatGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_API_KEY,
+  modelName: "gemini-pro",
+});
+
+const claude = new ChatAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  modelName: "claude-3-opus-20240229",
+});
 
 function getModel(modelName: string) {
   switch (modelName) {
-    case 'chatgpt-4o-latest':
-      return openai('chatgpt-4o-latest')
-    case 'gpt-4o-mini':
-      return openai('gpt-4o-mini')
-    case 'claude-3-5-sonnet':
-      return anthropic('claude-3-5-sonnet-20240620')
-    case 'gemini-1.5-pro':
-      return google('gemini-1.5-pro-latest')
-    case 'gemini-1.5-flash':
-      return google('gemini-1.5-flash-latest')
-    case 'llama-3.1-70b':
-      return groq('llama-3.1-70b-versatile')
-    case 'llama-3.1-8b':
-      return groq('llama-3.1-8b-instant')
+    case 'gpt-3.5-turbo':
+      return async (messages: CoreMessage[]) => {
+        const response = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: messages as any,
+          stream: true,
+        })
+        return response
+      }
+    case 'claude':
+      return async (messages: CoreMessage[]) => {
+        const response = await claude.stream(messages.map(m => ({ content: m.content, role: m.role })))
+        return response
+      }
+    case 'gemini':
+      return async (messages: CoreMessage[]) => {
+        const response = await gemini.stream(messages.map(m => ({ content: m.content, role: m.role })))
+        return response
+      }
     default:
       throw new Error('An invalid model was selected')
   }
@@ -36,11 +54,28 @@ export async function continueConversation(
   messages: CoreMessage[],
   model: string,
 ) {
-  const result = await streamText({
-    model: getModel(model),
-    messages,
-  })
+  try {
+    const modelFunction = getModel(model)
+    const result = await modelFunction(messages)
 
-  const stream = createStreamableValue(result.textStream)
-  return stream.value
+    const stream = createStreamableValue(
+      (async function* () {
+        for await (const chunk of result) {
+          if (model === 'gpt-3.5-turbo') {
+            yield (chunk as OpenAI.Chat.Completions.ChatCompletionChunk).choices[0]?.delta?.content || ''
+          } else {
+            yield chunk.content || ''
+          }
+        }
+      })()
+    )
+    return stream.value
+  } catch (error) {
+    console.error('Error in continueConversation:', error)
+    if (error instanceof Error) {
+      return createStreamableValue(`An error occurred: ${error.message}. Please try again.`).value
+    } else {
+      return createStreamableValue('An unknown error occurred. Please try again.').value
+    }
+  }
 }
