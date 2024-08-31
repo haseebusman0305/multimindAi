@@ -28,7 +28,7 @@ function getModel(modelName: string) {
     case 'llama-3.1-8b':
       return groq('llama-3.1-8b-instant')
     default:
-      throw new Error('無効なモデルが選択されました')
+      throw new Error('An invalid model was selected')
   }
 }
 
