@@ -53,6 +53,7 @@ export async function continueConversation(
   model: string,
 ): Promise<{ status: 'success' | 'error'; content?: string; message?: string }> {
   try {
+    console.log('continueConversation called with model:', model)
     const modelFunction = getModel(model)
     const result = await modelFunction(messages)
 
@@ -65,6 +66,8 @@ export async function continueConversation(
         fullResponse += chunkWithContent.content || '';
       }
     }
+
+    console.log('Full response:', fullResponse)
 
     return {
       status: 'success',
