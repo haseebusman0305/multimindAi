@@ -212,6 +212,20 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
               </CardContent>
             </Card>
           )}
+          {isLoading && (
+            <div className="mb-4 whitespace-pre-wrap">
+              <div className="flex items-start">
+                <Avatar className="mr-2 h-8 w-8">
+                  <AvatarFallback>
+                    <Bot className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="rounded-lg bg-gray-100 px-4 py-2 dark:bg-gray-800">
+                  <span className="loading loading-dots loading-sm"></span>
+                </div>
+              </div>
+            </div>
+          )}
           {error && (
             <div className="mt-4 text-red-500">{error}</div>
           )}
