@@ -20,9 +20,11 @@ export default function Chats() {
   )
 
   const addChat = () => {
-    const newId =
-      chats.length > 0 ? Math.max(...chats.map((chat) => chat.id)) + 1 : 1
-    setChats([...chats, { id: newId, isSync: false, messages: [] }])
+    if (chats.length < 3) {
+      const newId =
+        chats.length > 0 ? Math.max(...chats.map((chat) => chat.id)) + 1 : 1
+      setChats([...chats, { id: newId, isSync: false, messages: [] }])
+    }
   }
 
   const removeChat = (id: number) => {
@@ -67,7 +69,6 @@ export default function Chats() {
       ));
     } else {
       console.error('Error from AI:', result.message);
-      // Handle error (e.g., display error message to user)
     }
   }, [chats]);
 
@@ -98,12 +99,14 @@ export default function Chats() {
             />
           </div>
         ))}
-        <button
-          onClick={addChat}
-          className="flex h-full w-[calc(33.33%-1rem)] min-w-[320px] max-w-[480px] flex-shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-500 hover:text-slate-700"
-        >
-          Add a new chat
-        </button>
+        {chats.length < 3 && (
+          <button
+            onClick={addChat}
+            className="flex h-full w-[calc(33.33%-1rem)] min-w-[320px] max-w-[480px] flex-shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-500 hover:text-slate-700"
+          >
+            Add a new chat
+          </button>
+        )}
       </div>
       <div className="mt-4 border-t p-4">
         <div className="mx-auto flex w-full max-w-4xl items-end rounded-md border p-2">
