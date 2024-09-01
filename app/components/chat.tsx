@@ -76,18 +76,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
 
     const handleModelChange = useCallback(
       (value: string) => {
-        if (messages.length > 0) {
-          if (
-            window.confirm(
-              'Changing the model will reset the chat history. Are you sure?',
-            )
-          ) {
-            setSelectedModel(value)
-            // Reset messages here if needed
-          }
-        } else {
-          setSelectedModel(value)
-        }
+        setSelectedModel(value)
       },
       [messages],
     )
@@ -203,11 +192,10 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
                     </Avatar>
                   )}
                   <div
-                    className={`${
-                      m.role === 'user'
+                    className={`${m.role === 'user'
                         ? 'ml-auto rounded-lg bg-blue-100 px-4 py-2 dark:bg-blue-950'
                         : 'rounded-lg bg-gray-100 px-4 py-2 dark:bg-gray-800'
-                    }`}
+                      }`}
                   >
                     {m.content as string}
                   </div>
