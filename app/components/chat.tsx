@@ -7,6 +7,7 @@ import {
   useCallback,
   forwardRef,
   useImperativeHandle,
+  useRef,
 } from 'react'
 import { Bot, SendIcon, X } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -61,6 +62,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
     const [selectedModel, setSelectedModel] = useState('chatgpt')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const cardContentRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
       if (isSync) {
@@ -147,6 +149,42 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
       }
     }, [])
 
+    useEffect(() => {
+      if (cardContentRef.current) {
+        cardContentRef.current.scrollTop = cardContentRef.current.scrollHeight
+      }
+    }, [messages, isLoading])
+
+    const renderStyledMessage = (content: string) => {
+      const lines = content.split('\n')
+      return lines.map((line, index) => {
+        // Bold
+        line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        line = line.replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Underline
+        line = line.replace(/__(.*?)__/g, '<u>$1</u>')
+        // Strikethrough
+        line = line.replace(/~~(.*?)~~/g, '<del>$1</del>')
+        // Headers
+        if (line.startsWith('# ')) {
+          return <h1 key={index} className="text-2xl font-bold mb-2">{line.slice(2)}</h1>
+        }
+        if (line.startsWith('## ')) {
+          return <h2 key={index} className="text-xl font-bold mb-2">{line.slice(3)}</h2>
+        }
+        if (line.startsWith('### ')) {
+          return <h3 key={index} className="text-lg font-bold mb-2">{line.slice(4)}</h3>
+        }
+        // List items
+        if (line.startsWith('* ')) {
+          return <li key={index} className="ml-4">• {line.slice(2)}</li>
+        }
+        // Default paragraph
+        return <p key={index} className="mb-2" dangerouslySetInnerHTML={{ __html: line }} />
+      })
+    }
+
     return (
       <Card className="flex h-full flex-col">
         <CardHeader className="flex-shrink-0">
@@ -179,10 +217,10 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-y-auto">
+        <CardContent className="flex-1 overflow-y-auto" ref={cardContentRef}>
           {messages.length > 0 ? (
             messages.map((m, i) => (
-              <div key={i} className="mb-4 whitespace-pre-wrap">
+              <div key={i} className="mb-4">
                 <div className="flex items-start">
                   {m.role === 'assistant' && (
                     <Avatar className="mr-2 h-8 w-8">
@@ -192,12 +230,13 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
                     </Avatar>
                   )}
                   <div
-                    className={`${m.role === 'user'
+                    className={`${
+                      m.role === 'user'
                         ? 'ml-auto rounded-lg bg-blue-100 px-4 py-2 dark:bg-blue-950'
                         : 'rounded-lg bg-gray-100 px-4 py-2 dark:bg-gray-800'
-                      }`}
+                    }`}
                   >
-                    {m.content as string}
+                    {renderStyledMessage(m.content as string)}
                   </div>
                 </div>
               </div>
