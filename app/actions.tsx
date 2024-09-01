@@ -24,7 +24,7 @@ const claude = new ChatAnthropic({
 
 function getModel(modelName: string) {
   switch (modelName) {
-    case 'gpt-3.5-turbo':
+    case 'chatgpt':
       return async (messages: CoreMessage[]) => {
         const response = await openai.chat.completions.create({
           model: 'gpt-3.5-turbo',

@@ -58,7 +58,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
     ref,
   ) => {
     const [input, setInput] = useState('')
-    const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo')
+    const [selectedModel, setSelectedModel] = useState('chatgpt')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -121,9 +121,9 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
 
     const getModelInfo = useCallback((model: string) => {
       switch (model) {
-        case 'gpt-3.5-turbo':
+        case 'chatgpt':
           return {
-            title: 'GPT-3.5 Turbo',
+            title: 'ChatGPT Turbo',
             description:
               'GPT-3.5 Turbo is a fast and efficient language model suitable for a wide range of tasks.',
           }
@@ -156,7 +156,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                <SelectItem value="chatgpt">ChatGPT</SelectItem>
                 <SelectItem value="claude">Claude</SelectItem>
                 <SelectItem value="gemini">Gemini</SelectItem>
               </SelectContent>
