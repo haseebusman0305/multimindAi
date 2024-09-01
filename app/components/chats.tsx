@@ -5,9 +5,11 @@ import { SendIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import Chat, { ChatHandle } from './chat'
+import { CoreMessage } from 'ai'
+import { continueConversation } from '../actions'
 
 export default function Chats() {
-  const [chats, setChats] = useState([{ id: 1, isSync: false }])
+  const [chats, setChats] = useState([{ id: 1, isSync: false, messages: [] as CoreMessage[] }])
   const [syncedInput, setSyncedInput] = useState('')
 
   const chatRefs = useRef<{ [id: number]: ChatHandle | null }>({})
@@ -20,7 +22,7 @@ export default function Chats() {
   const addChat = () => {
     const newId =
       chats.length > 0 ? Math.max(...chats.map((chat) => chat.id)) + 1 : 1
-    setChats([...chats, { id: newId, isSync: false }])
+    setChats([...chats, { id: newId, isSync: false, messages: [] }])
   }
 
   const removeChat = (id: number) => {
@@ -48,6 +50,27 @@ export default function Chats() {
     setSyncedInput('')
   }, [chats, syncedInput])
 
+  const handleSend = useCallback(async (chatId: number, message: string, model: string) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    const newMessages = [...chat.messages, { role: 'user', content: message } as CoreMessage];
+    setChats(prevChats => prevChats.map(c => c.id === chatId ? { ...c, messages: newMessages } : c));
+
+    const result = await continueConversation(newMessages, model);
+
+    if (result.status === 'success' && result.content) {
+      setChats(prevChats => prevChats.map(c =>
+        c.id === chatId
+          ? { ...c, messages: [...newMessages, { role: 'assistant', content: result.content } as CoreMessage] }
+          : c
+      ));
+    } else {
+      console.error('Error from AI:', result.message);
+      // Handle error (e.g., display error message to user)
+    }
+  }, [chats]);
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-full space-x-4 overflow-x-auto p-4">
@@ -62,9 +85,8 @@ export default function Chats() {
               onSyncChange={(sync) => handleSyncChange(chat.id, sync)}
               syncedInput={syncedInput}
               onSyncedInputChange={handleSyncedInputChange}
-              sendMessage={(message) => {
-                console.log(`Chat ${chat.id} sending: ${message}`)
-              }}
+              messages={chat.messages}
+              onSend={(message, model) => handleSend(chat.id, message, model)}
               ref={(el) => {
                 if (el) {
                   chatRefs.current[chat.id] = el

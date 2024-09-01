@@ -1,7 +1,6 @@
 'use client'
 
 import { type CoreMessage } from 'ai'
-import { readStreamableValue } from 'ai/rsc'
 import {
   useState,
   useEffect,
@@ -28,7 +27,6 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { continueConversation } from '../actions'
 
 export interface ChatHandle {
   sendMessage: (message: string) => void
@@ -40,8 +38,9 @@ interface ChatProps {
   onSyncChange: (sync: boolean) => void
   syncedInput: string
   onSyncedInputChange: (input: string) => void
-  sendMessage: (message: string) => void
+  onSend: (message: string, model: string) => void
   isSyncEnabled: boolean
+  messages: CoreMessage[]
 }
 
 const Chat = forwardRef<ChatHandle, ChatProps>(
@@ -52,12 +51,12 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
       onSyncChange,
       syncedInput,
       onSyncedInputChange,
-      sendMessage,
+      onSend,
       isSyncEnabled,
+      messages,
     },
     ref,
   ) => {
-    const [messages, setMessages] = useState<CoreMessage[]>([])
     const [input, setInput] = useState('')
     const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo')
     const [isLoading, setIsLoading] = useState(false)
@@ -84,7 +83,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
             )
           ) {
             setSelectedModel(value)
-            setMessages([])
+            // Reset messages here if needed
           }
         } else {
           setSelectedModel(value)
@@ -111,49 +110,24 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
 
         if (!messageToSend.trim()) return
 
-        const newMessages: CoreMessage[] = [
-          ...messages,
-          { content: messageToSend, role: 'user' },
-        ]
-
-        setMessages(newMessages)
         setInput('')
         setError(null)
         if (isSync) {
           onSyncedInputChange('')
         }
 
-        sendMessage(messageToSend)
         setIsLoading(true)
 
         try {
-          const result = await continueConversation(newMessages, selectedModel)
-
-          for await (const content of readStreamableValue(result)) {
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                role: 'assistant',
-                content: content as string,
-              },
-            ])
-          }
+          await onSend(messageToSend, selectedModel)
+          setIsLoading(false)
         } catch (error) {
           console.error('Error in handleSubmit:', error)
           setError('An error occurred while processing your request. Please try again.')
-        } finally {
           setIsLoading(false)
         }
       },
-      [
-        messages,
-        input,
-        syncedInput,
-        isSync,
-        selectedModel,
-        sendMessage,
-        onSyncedInputChange,
-      ],
+      [input, syncedInput, isSync, selectedModel, onSend, onSyncedInputChange],
     )
 
     const getModelInfo = useCallback((model: string) => {
@@ -219,17 +193,21 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
         <CardContent className="flex-1 overflow-y-auto">
           {messages.length > 0 ? (
             messages.map((m, i) => (
-              <div key={i} className="whitespace-pre-wrap">
+              <div key={i} className="mb-4 whitespace-pre-wrap">
                 <div className="flex items-start">
                   {m.role === 'assistant' && (
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="mr-2 h-8 w-8">
                       <AvatarFallback>
                         <Bot className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
                   )}
                   <div
-                    className={`${m.role === 'user' ? 'mb-4 max-w-lg rounded-lg bg-blue-100 px-4 py-2 dark:bg-blue-950' : 'mb-5 ml-3 p-1'}`}
+                    className={`${
+                      m.role === 'user'
+                        ? 'ml-auto rounded-lg bg-blue-100 px-4 py-2 dark:bg-blue-950'
+                        : 'rounded-lg bg-gray-100 px-4 py-2 dark:bg-gray-800'
+                    }`}
                   >
                     {m.content as string}
                   </div>
@@ -275,7 +253,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(
         </CardFooter>
       </Card>
     )
-  },
+  }
 )
 
 Chat.displayName = 'Chat'

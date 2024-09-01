@@ -1,14 +1,12 @@
 'use server'
 
-import { CoreMessage, streamText } from 'ai'
-import { createStreamableValue } from 'ai/rsc'
+import { CoreMessage } from 'ai'
 import OpenAI from 'openai'
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatAnthropic } from "@langchain/anthropic";
+import { config } from 'dotenv';
 
-type AIMessageChunk = {
-  content: string;
-};
+config()
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -53,29 +51,29 @@ function getModel(modelName: string) {
 export async function continueConversation(
   messages: CoreMessage[],
   model: string,
-) {
+): Promise<{ status: 'success' | 'error'; content?: string; message?: string }> {
   try {
     const modelFunction = getModel(model)
     const result = await modelFunction(messages)
 
-    const stream = createStreamableValue(
-      (async function* () {
-        for await (const chunk of result) {
-          if (model === 'gpt-3.5-turbo') {
-            yield (chunk as OpenAI.Chat.Completions.ChatCompletionChunk).choices[0]?.delta?.content || ''
-          } else {
-            yield chunk.content || ''
-          }
-        }
-      })()
-    )
-    return stream.value
+    let fullResponse = '';
+    for await (const chunk of result) {
+      if (model === 'gpt-3.5-turbo') {
+        fullResponse += (chunk as any).choices[0]?.delta?.content || '';
+      } else {
+        fullResponse += chunk.content || '';
+      }
+    }
+
+    return {
+      status: 'success',
+      content: fullResponse
+    }
   } catch (error) {
     console.error('Error in continueConversation:', error)
-    if (error instanceof Error) {
-      return createStreamableValue(`An error occurred: ${error.message}. Please try again.`).value
-    } else {
-      return createStreamableValue('An unknown error occurred. Please try again.').value
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'An unknown error occurred'
     }
   }
 }
