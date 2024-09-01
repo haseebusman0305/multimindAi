@@ -61,7 +61,8 @@ export async function continueConversation(
       if (model === 'gpt-3.5-turbo') {
         fullResponse += (chunk as any).choices[0]?.delta?.content || '';
       } else {
-        fullResponse += chunk.content || '';
+        const chunkWithContent = chunk as { content?: string };
+        fullResponse += chunkWithContent.content || '';
       }
     }
 
