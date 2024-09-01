@@ -3,6 +3,7 @@
 A powerful web application for running multiple Large Language Models (LLMs) in parallel, offering a seamless AI interaction experience.
 
 ![MultiMind AI Runner Interface](./public/images/multi-llm-runner.png)
+![MultiMind AI Runner Interface](./public/images/image.png)
 
 ## ✨ Features
 
